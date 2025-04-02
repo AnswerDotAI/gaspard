@@ -1,0 +1,26 @@
+# Gaspard
+
+> Gaspard is a Python library that wraps Google's Gemini API to provide a higher-level interface for creating AI applications. It automates common patterns while maintaining full control, offering features like stateful chat, prefill support, image handling, and streamlined tool use.
+
+Things to remember when using Gaspard:
+
+- You must set the `GEMINI_API_KEY` environment variable with your Gemini API key
+- Gaspard is designed to work with multiple Gemini models (including for example `gemini-1.5-pro` and `gemini-2.0-flash-exp` ).
+- The library provides support for tool calling and various forms of media including images.
+- Use `Chat()` for maintaining conversation state and handling tool interactions
+- When using tools, the library automatically handles the request/response loop
+- Gaspard supports various media types: images, audio files, video files, PDF documents, etc..
+- Gaspard's API design is similar to Claudette (for Anthropic's Claude model) and Cosette (for OpenAI's models)
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/AnswerDotAI/gaspard/refs/heads/main/README.md): Quick start guide and overview
+
+## API
+
+- [API List](https://raw.githubusercontent.com/AnswerDotAI/gaspard/refs/heads/main/apilist.txt): A succint list of all functions and methods in claudette.
+
+## Optional
+
+- [Tool loop handling](https://claudette.answer.ai/toolloop.html.md): How to use the tool loop functionality for complex multi-step interactions
+

@@ -1,0 +1,48 @@
+# gaspard Module Documentation
+
+## gaspard.core
+
+- `def find_block(r)`
+    Find the content in `r`.
+
+- `def contents(r)`
+    Helper to get the contents from response `r`.
+
+- `def usage(inp, out)`
+    Slightly more concise version of `Usage`.
+
+- `@patch def __add__(self, b)`
+    Add together each of `input_tokens` and `output_tokens`
+
+- `def mk_msgs(msgs, **kw)`
+    Helper to set 'assistant' role on alternate messages.
+
+- `class Client`
+    - `def __init__(self, model, cli, sp)`
+        Basic LLM messages client.
+
+
+- `@patch @delegates(genai.GenerativeModel.generate_content) def __call__(self, msgs, sp, maxtok, stream, **kwargs)`
+    Make a call to LLM.
+
+- `def mk_toolres(r, ns)`
+    Create a `tool_result` message from response `r`.
+
+- `def json2proto(schema_dict)`
+    Convert JSON schema to protobuf schema
+
+- `@patch @delegates(Client.__call__) def structured(self, msgs, tools, **kwargs)`
+    Return the value of all tool calls (generally used for structured outputs)
+
+- `class Chat`
+    - `def __init__(self, model, cli, sp, tools, tool_config)`
+        Gemini chat client.
+
+    - `@property def use`
+    - `@property def cost`
+
+## gaspard.toolloop
+
+- `@patch @delegates(genai.GenerativeModel.generate_content) def toolloop(self, pr, max_steps, trace_func, cont_func, **kwargs)`
+    Add prompt `pr` to dialog and get a response from the model, automatically following up with `tool_use` messages
+

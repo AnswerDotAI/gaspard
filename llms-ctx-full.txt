@@ -1,0 +1,1757 @@
+<project title="Gaspard" summary="Gaspard is a Python library that wraps Google's Gemini API to provide a higher-level interface for creating AI applications. It automates common patterns while maintaining full control, offering features like stateful chat, prefill support, image handling, and streamlined tool use.">Things to remember when using Gaspard:
+
+- You must set the `GEMINI_API_KEY` environment variable with your Gemini API key
+- Gaspard is designed to work with multiple Gemini models (including for example `gemini-1.5-pro` and `gemini-2.0-flash-exp` ).
+- The library provides support for tool calling and various forms of media including images.
+- Use `Chat()` for maintaining conversation state and handling tool interactions
+- When using tools, the library automatically handles the request/response loop
+- Gaspard supports various media types: images, audio files, video files, PDF documents, etc..
+- Gaspard's API design is similar to Claudette (for Anthropic's Claude model) and Cosette (for OpenAI's models)<docs><doc title="README" desc="Quick start guide and overview"># Gaspard
+
+
+
+## Install
+
+``` sh
+pip install gaspard
+```
+
+## Getting started
+
+Follow the [instructions](https://aistudio.google.com/app/apikey) to
+generate an API key, and set it as an evironment variable as shown
+below:
+
+``` sh
+export GEMINI_API_KEY=YOUR_API_KEY
+```
+
+Gemini’s Python SDK will automatically be installed with Gaspard, if you
+don’t already have it.
+
+``` python
+from gaspard import *
+```
+
+Gaspard provides models, which lists the models available in the SDK
+
+``` python
+models
+```
+
+    ('gemini-2.0-flash-exp',
+     'gemini-exp-1206',
+     'learnlm-1.5-pro-experimental',
+     'gemini-exp-1121',
+     'gemini-1.5-pro',
+     'gemini-1.5-flash',
+     'gemini-1.5-flash-8b')
+
+For our examples we’ll use `gemini-2.0-flash-exp` since it’s awesome,
+has a 1M context window and is currently free while in the experimental
+stage.
+
+``` python
+model = models[0]
+```
+
+## Chat
+
+The main interface to Gaspard is the
+[`Chat`](https://AnswerDotAI.github.io/gaspard/core.html#chat) class
+which provides a stateful interface to the models
+
+``` python
+chat = Chat(model, sp="""You are a helpful and concise assistant.""")
+chat("I'm Faisal")
+```
+
+Hi Faisal, it’s nice to meet you!
+
+<details>
+
+- content: {‘parts’: \[{‘text’: “Hi Faisal, it’s nice to meet you!”}\],
+  ‘role’: ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -0.04827792942523956
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 14
+- candidates_token_count: 12
+- total_token_count: 26
+- cached_content_token_count: 0
+
+</details>
+
+``` python
+r = chat("What's my name?")
+r
+```
+
+Your name is Faisal.
+
+<details>
+
+- content: {‘parts’: \[{‘text’: ‘Your name is Faisal.’}\], ‘role’:
+  ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -1.644962443000016e-05
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 35
+- candidates_token_count: 6
+- total_token_count: 41
+- cached_content_token_count: 0
+
+</details>
+
+As you see above, displaying the results of a call in a notebook shows
+just the message contents, with the other details hidden behind a
+collapsible section. Alternatively you can print the details:
+
+``` python
+print(r)
+```
+
+    response:
+    GenerateContentResponse(
+        done=True,
+        iterator=None,
+        result=protos.GenerateContentResponse({
+          "candidates": [
+            {
+              "content": {
+                "parts": [
+                  {
+                    "text": "Your name is Faisal.\n"
+                  }
+                ],
+                "role": "model"
+              },
+              "finish_reason": "STOP",
+              "safety_ratings": [
+                {
+                  "category": "HARM_CATEGORY_HATE_SPEECH",
+                  "probability": "NEGLIGIBLE"
+                },
+                {
+                  "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                  "probability": "NEGLIGIBLE"
+                },
+                {
+                  "category": "HARM_CATEGORY_HARASSMENT",
+                  "probability": "NEGLIGIBLE"
+                },
+                {
+                  "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                  "probability": "NEGLIGIBLE"
+                }
+              ],
+              "avg_logprobs": -1.644962443000016e-05
+            }
+          ],
+          "usage_metadata": {
+            "prompt_token_count": 35,
+            "candidates_token_count": 6,
+            "total_token_count": 41
+          }
+        }),
+    )
+
+You can use stream=True to stream the results as soon as they arrive
+(although you will only see the gradual generation if you execute the
+notebook yourself, of course!)
+
+``` python
+chat.h
+```
+
+    [{'role': 'user', 'parts': [{'text': "I'm Faisal"}, ' ']},
+     {'role': 'model', 'parts': ["Hi Faisal, it's nice to meet you!\n"]},
+     {'role': 'user', 'parts': [{'text': "What's my name?"}, ' ']},
+     {'role': 'model', 'parts': ['Your name is Faisal.\n']}]
+
+``` python
+for o in chat("What's your name? Tell me your story", stream=True): print(o, end='')
+```
+
+    I don't have a name or a personal story in the way a human does. I am a large language model, created by Google AI. I was trained on a massive amount of text data to be able to communicate and generate human-like text. I don't have a body, feelings, or memories, but I'm here to help you with information and tasks.
+
+Woah, welcome back to the land of the living Bard!
+
+## Tool use
+
+Tool use lets the model use external tools.
+
+We use docments to make defining Python functions as ergonomic as
+possible. Each parameter (and the return value) should have a type, and
+a docments comment with the description of what it is. As an example
+we’ll write a simple function that adds numbers together, and will tell
+us when it’s being called:
+
+``` python
+def sums(
+    a:int,  # First thing to sum
+    b:int=1 # Second thing to sum
+) -> int: # The sum of the inputs
+    "Adds a + b."
+    print(f"Finding the sum of {a} and {b}")
+    return a + b
+```
+
+Sometimes the model will say something like “according to the sums tool
+the answer is” – generally we’d rather it just tells the user the
+answer, so we can use a system prompt to help with this:
+
+``` python
+sp = "Never mention what tools you use."
+```
+
+We’ll get the model to add up some long numbers:
+
+``` python
+a,b = 604542,6458932
+pr = f"What is {a}+{b}?"
+pr
+```
+
+    'What is 604542+6458932?'
+
+To use tools, pass a list of them to Chat:
+
+``` python
+chat = Chat(model, sp=sp, tools=[sums])
+```
+
+Now when we call that with our prompt, the model doesn’t return the
+answer, but instead returns a `function_call` message, which means we
+have to call the named function (tool) with the provided parameters:
+
+``` python
+type(pr)
+```
+
+    str
+
+``` python
+r = chat(pr); r
+```
+
+    Finding the sum of 604542.0 and 6458932.0
+
+function_call { name: “sums” args { fields { key: “b” value {
+number_value: 6458932 } } fields { key: “a” value { number_value: 604542
+} } } }
+
+<details>
+
+- content: {‘parts’: \[{‘function_call’: {‘name’: ‘sums’, ‘args’: {‘a’:
+  604542.0, ‘b’: 6458932.0}}}\], ‘role’: ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -9.219200364896096e-06
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 77
+- candidates_token_count: 3
+- total_token_count: 80
+- cached_content_token_count: 0
+
+</details>
+
+Gaspard handles all that for us – we just have to pass along the
+message, and it all happens automatically:
+
+``` python
+chat.h
+```
+
+    [{'role': 'user', 'parts': [{'text': 'What is 604542+6458932?'}, ' ']},
+     {'role': 'model',
+      'parts': [function_call {
+         name: "sums"
+         args {
+           fields {
+             key: "b"
+             value {
+               number_value: 6458932
+             }
+           }
+           fields {
+             key: "a"
+             value {
+               number_value: 604542
+             }
+           }
+         }
+       }]},
+     {'role': 'user',
+      'parts': [name: "sums"
+       response {
+         fields {
+           key: "result"
+           value {
+             number_value: 7063474
+           }
+         }
+       },
+       {'text': ' '}]}]
+
+``` python
+chat()
+```
+
+7063474
+
+<details>
+
+- content: {‘parts’: \[{‘text’: ‘7063474’}\], ‘role’: ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -0.005276891868561506
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 128
+- candidates_token_count: 8
+- total_token_count: 136
+- cached_content_token_count: 0
+
+</details>
+
+We can inspect the history to see what happens under the hood. Gaspard
+calls the tool with the appropriate variables returned by the
+`function_call` message from the model. The result of calling the
+function is then sent back to the model, which uses that to respond to
+the user.
+
+``` python
+chat.h[-3:]
+```
+
+    [{'role': 'model',
+      'parts': [function_call {
+         name: "sums"
+         args {
+           fields {
+             key: "b"
+             value {
+               number_value: 6458932
+             }
+           }
+           fields {
+             key: "a"
+             value {
+               number_value: 604542
+             }
+           }
+         }
+       }]},
+     {'role': 'user',
+      'parts': [name: "sums"
+       response {
+         fields {
+           key: "result"
+           value {
+             number_value: 7063474
+           }
+         }
+       },
+       {'text': ' '}]},
+     {'role': 'model', 'parts': ['7063474\n']}]
+
+You can see how many tokens have been used at any time by checking the
+`use` property.
+
+``` python
+chat.use
+```
+
+    In: 205; Out: 11; Total: 216
+
+## Tool loop
+
+We can do everything needed to use tools in a single step, by using
+Chat.toolloop. This can even call multiple tools as needed solve a
+problem. For example, let’s define a tool to handle multiplication:
+
+``` python
+def mults(
+    a:int,  # First thing to multiply
+    b:int=1 # Second thing to multiply
+) -> int: # The product of the inputs
+    "Multiplies a * b."
+    print(f"Finding the product of {a} and {b}")
+    return a * b
+```
+
+Now with a single call we can calculate `(a+b)*2` – by passing
+`show_trace` we can see each response from the model in the process:
+
+``` python
+chat = Chat(model, sp=sp, tools=[sums,mults])
+pr = f'Calculate ({a}+{b})*2'
+pr
+```
+
+    'Calculate (604542+6458932)*2'
+
+``` python
+def pchoice(r): print(r.parts[0])
+```
+
+``` python
+r = chat.toolloop(pr, trace_func=pchoice)
+```
+
+    Finding the sum of 604542.0 and 6458932.0
+    function_call {
+      name: "sums"
+      args {
+        fields {
+          key: "b"
+          value {
+            number_value: 6458932
+          }
+        }
+        fields {
+          key: "a"
+          value {
+            number_value: 604542
+          }
+        }
+      }
+    }
+
+    Finding the product of 7063474.0 and 2.0
+    function_call {
+      name: "mults"
+      args {
+        fields {
+          key: "b"
+          value {
+            number_value: 2
+          }
+        }
+        fields {
+          key: "a"
+          value {
+            number_value: 7063474
+          }
+        }
+      }
+    }
+
+    text: "(604542+6458932)*2 = 14126948\n"
+
+We can see from the trace above that the model correctly calls the sums
+function first to add the numbers inside the parenthesis and then calls
+the mults function to multiply the result of the summation by `2`. The
+response sent back to the user is the actual result after performing the
+chained tool calls, shown below:
+
+``` python
+r
+```
+
+(604542+6458932)\*2 = 14126948
+
+<details>
+
+- content: {‘parts’: \[{‘text’: ’(604542+6458932)\*2 = 14126948’}\],
+  ‘role’: ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -0.00017791306267359426
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 229
+- candidates_token_count: 28
+- total_token_count: 257
+- cached_content_token_count: 0
+
+</details>
+
+## Structured Outputs
+
+If you just want the immediate result from a single tool, use
+[`Client.structured`](https://AnswerDotAI.github.io/gaspard/core.html#client.structured).
+
+``` python
+cli = Client(model)
+```
+
+``` python
+def sums(
+    a:int,  # First thing to sum
+    b:int=1 # Second thing to sum
+) -> int: # The sum of the inputs
+    "Adds a + b."
+    print(f"Finding the sum of {a} and {b}")
+    return a + b
+```
+
+``` python
+cli.structured("What is 604542+6458932", sums)
+```
+
+    Finding the sum of 604542.0 and 6458932.0
+
+    [7063474.0]
+
+This is particularly useful for getting back structured information,
+e.g:
+
+``` python
+class President(BasicRepr):
+    "Information about a president of the United States"
+    def __init__(self, 
+                first:str, # first name
+                last:str, # last name
+                spouse:str, # name of spouse
+                years_in_office:str, # format: "{start_year}-{end_year}"
+                birthplace:str, # name of city
+                birth_year:int # year of birth, `0` if unknown
+        ):
+        assert re.match(r'\d{4}-\d{4}', years_in_office), "Invalid format: `years_in_office`"
+        store_attr()
+```
+
+``` python
+cli.structured("Provide key information about the 3rd President of the United States", President)[0]
+```
+
+    President(first='Thomas', last='Jefferson', spouse='Martha Wayles Skelton', years_in_office='1801-1809', birthplace='Shadwell', birth_year=1743.0)
+
+## Images
+
+As everyone knows, when testing image APIs you have to use a cute puppy.
+But, that’s boring, so here’s a baby hippo instead.
+
+``` python
+img_fn = Path('samples/baby_hippo.jpg')
+display.Image(filename=img_fn, width=200)
+```
+
+<img src="index_files/figure-commonmark/cell-30-output-1.jpeg"
+width="200" />
+
+We create a
+[`Chat`](https://AnswerDotAI.github.io/gaspard/core.html#chat) object as
+before:
+
+``` python
+chat = Chat(model)
+```
+
+For Gaspard, we can simply pass `Path` objects that repsent the path of
+the images. To pass multi-part messages, such as an image along with a
+prompt, we simply pass in a list of items. Note that Gaspard expects
+each item to be a text or a `Path` object.
+
+``` python
+chat([img_fn, "In brief, is happening in the photo?"])
+```
+
+Certainly!
+
+In the photo, a person’s hand is gently touching the chin of a baby
+hippopotamus. The hippo is sitting on the ground and appears to be
+looking straight at the camera.
+<details>
+
+- content: {‘parts’: \[{‘text’: “Certainly!the photo, a person’s hand is
+  gently touching the chin of a baby hippopotamus. The hippo is sitting
+  on the ground and appears to be looking straight at the camera.”}\],
+  ‘role’: ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -0.3545633316040039
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 268
+- candidates_token_count: 40
+- total_token_count: 308
+- cached_content_token_count: 0
+
+</details>
+
+Under the hood, Gaspard uploads the image using Gemini’s `File API` and
+passes a reference to the model. Gemini API will automatically infer the
+MIME type, and convert it appropriately. NOTE that the image is also
+included in input tokens.
+
+``` python
+chat.use
+```
+
+    In: 268; Out: 40; Total: 308
+
+Alternatively, Gaspard supports creating a multi-stage chat with
+separate image and text prompts. For instance, you can pass just the
+image as the initial prompt (in which case the model will make some
+general comments about what it sees, which can be VERY detailed
+depending on the model and often begin with “Certainly!” for some
+reason), and then follow up with questions in additional prompts:
+
+``` python
+chat = Chat(model)
+chat(img_fn)
+```
+
+Certainly! Here’s a description of the image you sent:
+
+**Overall Scene:**
+
+The image is a close-up shot of a baby hippopotamus being gently petted
+by a human hand. The scene is heartwarming and focuses on the
+interaction between the adorable hippo calf and the human.
+
+**Baby Hippo:**
+
+- **Appearance:** The hippo is a very young calf with a plump, rounded
+  body. Its skin is a mottled gray color, with hints of pink especially
+  around its neck and cheeks. Its eyes are dark and soulful, giving it
+  an endearing expression. The calf has a small, broad snout and tiny,
+  rounded ears.
+- **Pose:** The hippo is sitting with its short legs tucked beneath its
+  body. It’s looking directly at the camera with a slightly curious and
+  passive expression.
+- **Texture:** The hippo’s skin appears smooth and moist, suggesting it
+  might be wet or freshly out of the water.
+
+**Human Hand:**
+
+- **Position:** The hand is placed gently under the hippo’s chin and
+  neck, supporting its head. The fingers are slightly curved and not
+  gripping tightly, demonstrating a caring touch.
+- **Texture:** The skin of the hand appears soft and well-maintained.
+
+**Background:**
+
+- **Setting:** The background is out of focus, but it appears to be a
+  rocky, possibly aquatic, environment. The textures in the background
+  are muted and do not detract from the main subjects of the photo.
+- **Date**: There’s a watermark saying “Thailand 9/2024”, indicating the
+  location and date of the image.
+
+**Mood/Tone:**
+
+- The image evokes a sense of gentleness and tenderness. The close-up
+  perspective and the gentle touch of the hand create a very intimate
+  and sweet scene.
+- The calf’s innocent expression adds to the overall cuteness and warmth
+  of the image.
+
+**Overall Impression:**
+
+The image captures a beautiful moment of interaction between a human and
+a very young, vulnerable animal. The photograph emphasizes the gentle
+nature of the interaction and the sheer adorableness of the baby hippo,
+making it a very touching and memorable picture.
+
+Let me know if you would like a description from another perspective or
+have any other questions about the image!
+<details>
+
+- content: {‘parts’: \[{‘text’: ’Certainly! Here's a description of the
+  image you sent:\*Overall Scene:\*\*image is a close-up shot of a baby
+  hippopotamus being gently petted by a human hand. The scene is
+  heartwarming and focuses on the interaction between the adorable hippo
+  calf and the human. \*Baby Hippo:****Appearance:** The hippo is a very
+  young calf with a plump, rounded body. Its skin is a mottled gray
+  color, with hints of pink especially around its neck and cheeks. Its
+  eyes are dark and soulful, giving it an endearing expression. The calf
+  has a small, broad snout and tiny, rounded ears.**Pose:** The hippo is
+  sitting with its short legs tucked beneath its body. It's looking
+  directly at the camera with a slightly curious and passive expression.
+  **Texture:\*\* The hippo's skin appears smooth and moist, suggesting
+  it might be wet or freshly out of the water.\*Human
+  Hand:****Position:** The hand is placed gently under the hippo's chin
+  and neck, supporting its head. The fingers are slightly curved and not
+  gripping tightly, demonstrating a caring touch.**Texture:\*\* The skin
+  of the hand appears soft and
+  well-maintained.\*Background:****Setting:** The background is out of
+  focus, but it appears to be a rocky, possibly aquatic, environment.
+  The textures in the background are muted and do not detract from the
+  main subjects of the photo.**Date\*\*: There's a watermark saying
+  “Thailand 9/2024”, indicating the location and date of the
+  image.\*Mood/Tone:\*\*The image evokes a sense of gentleness and
+  tenderness. The close-up perspective and the gentle touch of the hand
+  create a very intimate and sweet scene.The calf's innocent expression
+  adds to the overall cuteness and warmth of the image.\*Overall
+  Impression:\*\*image captures a beautiful moment of interaction
+  between a human and a very young, vulnerable animal. The photograph
+  emphasizes the gentle nature of the interaction and the sheer
+  adorableness of the baby hippo, making it a very touching and
+  memorable picture.me know if you would like a description from another
+  perspective or have any other questions about the image!’}\], ‘role’:
+  ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -0.7025935932741327
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 260
+- candidates_token_count: 472
+- total_token_count: 732
+- cached_content_token_count: 0
+
+</details>
+
+``` python
+chat('What direction is the hippo facing?')
+```
+
+The hippo is facing directly towards the camera.
+
+<details>
+
+- content: {‘parts’: \[{‘text’: ‘The hippo is facing directly towards
+  the camera.’}\], ‘role’: ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -0.06370497941970825
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 742
+- candidates_token_count: 10
+- total_token_count: 752
+- cached_content_token_count: 0
+
+</details>
+
+``` python
+chat('What color is it?')
+```
+
+The hippo is a mottled gray color, with hints of pink especially around
+its neck and cheeks.
+
+<details>
+
+- content: {‘parts’: \[{‘text’: ‘The hippo is a mottled gray color, with
+  hints of pink especially around its neck and cheeks.’}\], ‘role’:
+  ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -0.08235452175140381
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 760
+- candidates_token_count: 20
+- total_token_count: 780
+- cached_content_token_count: 0
+
+</details>
+
+Note that the image is passed in again for every input in the dialog,
+via the chat history, so the number of input tokens increases quickly
+with this kind of chat.
+
+``` python
+chat.use
+```
+
+    In: 1762; Out: 502; Total: 2264
+
+## Other Media
+
+Beyond images, we can also pass in other kind of media to Gaspard, such
+as audio file, video files, documents, etc.
+
+For example, let’s try to send a pdf file to the model.
+
+``` python
+pdf_fn = Path('samples/attention_is_all_you_need.pdf')
+```
+
+``` python
+chat = Chat(model)
+```
+
+``` python
+chat([pdf_fn, "In brief, what are the main ideas of this paper?"])
+```
+
+Certainly! Here’s a breakdown of the main ideas presented in the paper
+“Attention is All You Need”:
+
+**Core Contribution: The Transformer Architecture**
+
+- **Rejection of Recurrence and Convolution:** The paper proposes a
+  novel neural network architecture called the “Transformer” that moves
+  away from traditional recurrent neural networks (RNNs) and
+  convolutional neural networks (CNNs). These are the common
+  architectures for tasks involving sequence data.
+- **Sole Reliance on Attention:** The Transformer relies solely on the
+  “attention” mechanism to capture relationships within input and output
+  sequences. This is the core novel idea and is in contrast to models
+  using attention *in addition to* RNNs or CNNs.
+- **Parallelizable:** By removing recurrence, the Transformer is highly
+  parallelizable, which allows for faster training, especially on GPUs.
+- **Attention-Based Encoder-Decoder:** The Transformer uses an
+  encoder-decoder architecture, like other sequence-to-sequence models,
+  but the encoder and decoder are based on self-attention mechanisms
+  rather than RNNs or CNNs.
+
+**Key Components of the Transformer:**
+
+- **Multi-Head Attention:** The Transformer uses multiple “attention
+  heads,” each learning different dependencies. This allows the model to
+  capture information from different representation sub-spaces.
+  - **Self-Attention:** Attention mechanism is applied on the same
+    sequence (e.g. input to input or output to output), to capture
+    relations within the sequence itself.
+  - **Encoder-Decoder Attention:** Attention mechanism is applied on two
+    sequences (encoder and decoder output) to align sequences between
+    the source and target.
+- **Scaled Dot-Product Attention:** A specific form of attention that
+  uses dot products to calculate the attention weights with a scaling
+  factor to stabilize the training.
+- **Position-wise Feed-Forward Networks:** Fully connected networks are
+  applied to each position separately after attention to add
+  non-linearity.
+- **Positional Encoding:** Since the Transformer doesn’t have inherent
+  recurrence or convolutions, positional encodings are added to the
+  input embeddings to encode the sequence order.
+
+**Experimental Results and Impact:**
+
+- **Superior Translation Quality:** The paper demonstrates the
+  effectiveness of the Transformer on machine translation tasks
+  (English-to-German and English-to-French). The models achieve
+  state-of-the-art results with significant BLEU score improvements over
+  existing models including RNN and CNN based approaches.
+- **Faster Training:** They show that the Transformer achieves those
+  state-of-the-art results with much less training time compared to
+  other architectures, showing the benefit of parallelization.
+- **Generalization to Other Tasks:** The Transformer is also shown to
+  work well on English constituency parsing, highlighting its ability to
+  handle other sequence-based problems.
+- **Interpretability:** Through attention visualizations, the paper also
+  suggests that the model learns to capture structural information in
+  the input, making it more interpretable than recurrent methods.
+
+**In Essence:**
+
+The paper argues for attention as a foundational building block for
+sequence processing, dispensing with the need for recurrence and
+convolutions. It introduces the Transformer, a model that leverages
+attention mechanisms to achieve both better performance and faster
+training, setting a new state-of-the-art baseline for many tasks such as
+machine translation.
+
+Let me know if you’d like any specific aspect clarified further!
+
+<details>
+
+- content: {‘parts’: \[{‘text’: ’Certainly! Here's a breakdown of the
+  main ideas presented in the paper “Attention is All You Need”:\*Core
+  Contribution: The Transformer Architecture****Rejection of Recurrence
+  and Convolution:** The paper proposes a novel neural network
+  architecture called the “Transformer” that moves away from traditional
+  recurrent neural networks (RNNs) and convolutional neural networks
+  (CNNs). These are the common architectures for tasks involving
+  sequence data.**Sole Reliance on Attention:** The Transformer relies
+  solely on the “attention” mechanism to capture relationships within
+  input and output sequences. This is the core novel idea and is in
+  contrast to models using attention *in addition to* RNNs or
+  CNNs.**Parallelizable:** By removing recurrence, the Transformer is
+  highly parallelizable, which allows for faster training, especially on
+  GPUs.**Attention-Based Encoder-Decoder:\*\* The Transformer uses an
+  encoder-decoder architecture, like other sequence-to-sequence models,
+  but the encoder and decoder are based on self-attention mechanisms
+  rather than RNNs or CNNs.\*Key Components of the
+  Transformer:****Multi-Head Attention:** The Transformer uses multiple
+  “attention heads,” each learning different dependencies. This allows
+  the model to capture information from different representation
+  sub-spaces.**Self-Attention:** Attention mechanism is applied on the
+  same sequence (e.g. input to input or output to output), to capture
+  relations within the sequence itself.**Encoder-Decoder Attention:**
+  Attention mechanism is applied on two sequences (encoder and decoder
+  output) to align sequences between the source and target.**Scaled
+  Dot-Product Attention:** A specific form of attention that uses dot
+  products to calculate the attention weights with a scaling factor to
+  stabilize the training.**Position-wise Feed-Forward Networks:** Fully
+  connected networks are applied to each position separately after
+  attention to add non-linearity.**Positional Encoding:\*\* Since the
+  Transformer doesn't have inherent recurrence or convolutions,
+  positional encodings are added to the input embeddings to encode the
+  sequence order.\*Experimental Results and Impact:****Superior
+  Translation Quality:** The paper demonstrates the effectiveness of the
+  Transformer on machine translation tasks (English-to-German and
+  English-to-French). The models achieve state-of-the-art results with
+  significant BLEU score improvements over existing models including RNN
+  and CNN based approaches.**Faster Training:** They show that the
+  Transformer achieves those state-of-the-art results with much less
+  training time compared to other architectures, showing the benefit of
+  parallelization.**Generalization to Other Tasks:** The Transformer is
+  also shown to work well on English constituency parsing, highlighting
+  its ability to handle other sequence-based
+  problems.**Interpretability:\*\* Through attention visualizations, the
+  paper also suggests that the model learns to capture structural
+  information in the input, making it more interpretable than recurrent
+  methods.\*In Essence:\*\*paper argues for attention as a foundational
+  building block for sequence processing, dispensing with the need for
+  recurrence and convolutions. It introduces the Transformer, a model
+  that leverages attention mechanisms to achieve both better performance
+  and faster training, setting a new state-of-the-art baseline for many
+  tasks such as machine translation.me know if you'd like any specific
+  aspect clarified further!’}\], ‘role’: ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -0.7809832342739763
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 14943
+- candidates_token_count: 696
+- total_token_count: 15639
+- cached_content_token_count: 0
+
+</details>
+
+We can pass in audio files in the same way.
+
+``` python
+audio_fn = Path('samples/attention_is_all_you_need.mp3')
+```
+
+``` python
+pr = "This is a podcast about the same paper. What important details from the paper are not in the podcast?"
+```
+
+``` python
+chat([audio_fn, pr])
+```
+
+Okay, let’s analyze what details were missing from the podcast
+discussion of “Attention is All You Need”. Here are some of the key
+aspects not fully covered:
+
+**1. Deeper Dive into the Math and Mechanics:**
+
+- **Detailed Attention Formula:** The podcast mentions “scaled dot
+  product attention” but doesn’t delve into the actual mathematical
+  formula used to calculate the attention weights:
+  - `Attention(Q, K, V) = softmax((QK^T) / sqrt(d_k)) * V` (where
+    Q=query, K=key, V=value, and d_k is the dimension of the key)
+- **Query, Key, Value:** While mentioned, the exact nature of how Query,
+  Key and Values are generated from input is never made explicit. How
+  are these generated by linear transformations is an essential aspect.
+- **The role of the Mask:** The mask in decoder’s self-attention is also
+  not covered in depth. Masking is essential for the auto-regressive
+  nature of the output sequence.
+- **Positional Encoding Equations:** The podcast mentioned positional
+  encoding but not the specific sine and cosine formulas and their
+  purpose which are key to how the model retains position information.
+  - `PE(pos, 2i) = sin(pos/10000^(2i/d_model))`
+  - `PE(pos, 2i+1) = cos(pos/10000^(2i/d_model))`
+- **Detailed explanation of how d_model, d_k, d_v and head dimension
+  relate.** This is essential to understanding the parameter counts in
+  the model.
+
+**2. Architectural Details and Hyperparameters:**
+
+- **Number of Layers and Model Dimensions:** The paper uses 6 layers
+  both on the encoder and decoder side in their basic and large models.
+  The exact dimensionality of the model itself is also crucial to
+  understanding its capacity. The podcast only mentions that they are
+  stacked.
+- **Feed Forward Layer Details:** The point-wise feed-forward network’s
+  dimensionality is essential for model performance. The podcast does
+  not go into depth about it and the dimensionality being used d_ff=2048
+  is key.
+- **Dropout and Label Smoothing:** They are mentioned as a type of
+  regularization, but the specific rates of 0.1 for the base model are
+  never mentioned nor is the label smoothing rate of 0.1. These details
+  are important for reproducibility and performance.
+- **Optimization Details:** There is also no mention of the Adam
+  Optimizer’s Beta parameters of β₁ = 0.9, β2 = 0.98 and € = 10-9. The
+  paper introduces a specific learning rate decay that is not discussed
+  by name.
+
+**3. Analysis and Experiments:**
+
+- **Comparison to other attention-based models:** The paper explains its
+  motivations in relation to other attention-based models (such as
+  memory networks).
+- **Model variation experiments:** The paper contains detailed
+  experiments varying attention head number and dimensionality,
+  different position encoding options, and impact of dropout and size
+  that are not discussed.
+- **Computational Complexity:** The paper explains detailed complexity
+  analysis for different layer types (Recurrent, Convolutional etc) and
+  their implications for training performance, which is only vaguely
+  discussed in the podcast.
+- **Attention Interpretations:** The paper visually highlights patterns
+  in attention weights which provide intuition on what the model is
+  learning, which is not really discussed by name. This allows insights
+  into how the model handles long-distance dependencies.
+
+**4. Technical Implementation:**
+
+- **Byte-pair encoding:** While mentioned, this subword approach and its
+  impact on vocabulary size and performance is never fully discussed.
+- **Batching:** Batching of training examples using the total sequence
+  length is discussed, but the method of how they are batched in terms
+  of approximately 25000 tokens is not explicit in the podcast.
+- **Ensemble method:** Details about how checkpointing and averaging are
+  used to generate model predictions is missing.
+
+**5. Broader Context and Future Work**
+
+- **Why sinusoidal encodings:** The paper specifically states that they
+  hypothesized that using fixed functions for position encoding should
+  be better than learning them, this explanation is not given in the
+  podcast.
+- **Future Directions:** The paper explicitly lays out plans to extend
+  the transformer to handle larger inputs using locality restrictions
+  and applying them to other modalities, which was alluded to, but not
+  explored with the same depth.
+
+**In Summary:**
+
+The podcast provides a good overview of the high-level ideas of the
+paper, but it omits several crucial technical details, mathematical
+equations, model architecture configurations, and experimental analysis.
+These omissions are quite critical for fully grasping the novelty and
+impact of the paper’s findings, and for anyone interested in
+implementing or extending the model. The podcast lacks the quantitative
+analysis and model variations that the paper presents.
+
+<details>
+
+- content: {‘parts’: \[{‘text’: ’Okay, let's analyze what details were
+  missing from the podcast discussion of “Attention is All You Need”.
+  Here are some of the key aspects not fully covered:\*1. Deeper Dive
+  into the Math and Mechanics:****Detailed Attention Formula:** The
+  podcast mentions “scaled dot product attention” but doesn't delve into
+  the actual mathematical formula used to calculate the attention
+  weights:`Attention(Q, K, V) = softmax((QK^T) / sqrt(d_k)) * V` (where
+  Q=query, K=key, V=value, and d_k is the dimension of the key)**Query,
+  Key, Value:** While mentioned, the exact nature of how Query, Key and
+  Values are generated from input is never made explicit. How are these
+  generated by linear transformations is an essential aspect.**The role
+  of the Mask:** The mask in decoder's self-attention is also not
+  covered in depth. Masking is essential for the auto-regressive nature
+  of the output sequence.**Positional Encoding Equations:** The podcast
+  mentioned positional encoding but not the specific sine and cosine
+  formulas and their purpose which are key to how the model retains
+  position
+  information.`PE(pos, 2i) = sin(pos/10000^(2i/d_model))``PE(pos, 2i+1) = cos(pos/10000^(2i/d_model))`**Detailed
+  explanation of how d_model, d_k, d_v and head dimension relate.\*\*
+  This is essential to understanding the parameter counts in the
+  model.\*2. Architectural Details and Hyperparameters:****Number of
+  Layers and Model Dimensions:** The paper uses 6 layers both on the
+  encoder and decoder side in their basic and large models. The exact
+  dimensionality of the model itself is also crucial to understanding
+  its capacity. The podcast only mentions that they are stacked.**Feed
+  Forward Layer Details:** The point-wise feed-forward network's
+  dimensionality is essential for model performance. The podcast does
+  not go into depth about it and the dimensionality being used d_ff=2048
+  is key.**Dropout and Label Smoothing:** They are mentioned as a type
+  of regularization, but the specific rates of 0.1 for the base model
+  are never mentioned nor is the label smoothing rate of 0.1. These
+  details are important for reproducibility and
+  performance.**Optimization Details:\*\* There is also no mention of
+  the Adam Optimizer's Beta parameters of β₁ = 0.9, β2 = 0.98 and € =
+  10-9. The paper introduces a specific learning rate decay that is not
+  discussed by name.\*3. Analysis and Experiments:****Comparison to
+  other attention-based models:** The paper explains its motivations in
+  relation to other attention-based models (such as memory
+  networks).**Model variation experiments:** The paper contains detailed
+  experiments varying attention head number and dimensionality,
+  different position encoding options, and impact of dropout and size
+  that are not discussed.**Computational Complexity:** The paper
+  explains detailed complexity analysis for different layer types
+  (Recurrent, Convolutional etc) and their implications for training
+  performance, which is only vaguely discussed in the
+  podcast.**Attention Interpretations:\*\* The paper visually highlights
+  patterns in attention weights which provide intuition on what the
+  model is learning, which is not really discussed by name. This allows
+  insights into how the model handles long-distance dependencies.\*4.
+  Technical Implementation:****Byte-pair encoding:** While mentioned,
+  this subword approach and its impact on vocabulary size and
+  performance is never fully discussed.**Batching:** Batching of
+  training examples using the total sequence length is discussed, but
+  the method of how they are batched in terms of approximately 25000
+  tokens is not explicit in the podcast.**Ensemble method:\*\* Details
+  about how checkpointing and averaging are used to generate model
+  predictions is missing.\*5. Broader Context and Future Work****Why
+  sinusoidal encodings:** The paper specifically states that they
+  hypothesized that using fixed functions for position encoding should
+  be better than learning them, this explanation is not given in the
+  podcast.**Future Directions:\*\* The paper explicitly lays out plans
+  to extend the transformer to handle larger inputs using locality
+  restrictions and applying them to other modalities, which was alluded
+  to, but not explored with the same depth.\*In Summary:\*\*podcast
+  provides a good overview of the high-level ideas of the paper, but it
+  omits several crucial technical details, mathematical equations, model
+  architecture configurations, and experimental analysis. These
+  omissions are quite critical for fully grasping the novelty and impact
+  of the paper's findings, and for anyone interested in implementing or
+  extending the model. The podcast lacks the quantitative analysis and
+  model variations that the paper presents.’}\], ‘role’: ‘model’}
+- finish_reason: 1
+- safety_ratings: \[{‘category’: 8, ‘probability’: 1, ‘blocked’: False},
+  {‘category’: 10, ‘probability’: 1, ‘blocked’: False}, {‘category’: 7,
+  ‘probability’: 1, ‘blocked’: False}, {‘category’: 9, ‘probability’: 1,
+  ‘blocked’: False}\]
+- avg_logprobs: -1.2337962527821222
+- token_count: 0
+- grounding_attributions: \[\]
+- prompt_token_count: 23502
+- candidates_token_count: 1039
+- total_token_count: 24541
+- cached_content_token_count: 0
+
+</details>
+
+You should be careful and monitor usage as the token usage rack up
+really fast!
+
+``` python
+chat.use
+```
+
+    In: 38445; Out: 1735; Total: 40180
+
+We can also use structured outputs with multi-modal data:
+
+``` python
+class AudioMetadata(BasicRepr):
+    """Class to hold metadata for audio files"""
+    def __init__(
+        self,
+        n_speakers:int, # Number of speakers
+        topic:str, # Topic discussed
+        summary:str, # 100 word summary
+        transcript:list[str], # Transcript of the audio segmented by speaker
+    ): store_attr()
+pr = "Extract the necessary information from the audio."
+```
+
+``` python
+audio_md = cli.structured(mk_msgs([[audio_fn, pr]]), tools=[AudioMetadata])[0]
+```
+
+``` python
+print(f'Number of speakers: {audio_md.n_speakers}')
+print(f'Topic: {audio_md.topic}')
+print(f'Summary: {audio_md.summary}')
+transcript = '\n-'.join(list(audio_md.transcript)[:10])
+print(f'Transcript: {transcript}')
+```
+
+    Number of speakers: 2.0
+    Topic: Machine Learning and NLP
+    Summary: This podcast discusses the 'Attention is All You Need' research paper by Vaswani et al., focusing on the Transformer model's architecture, its use of attention mechanisms, and its performance on translation tasks.
+    Transcript: Welcome to our podcast, where we dive into groundbreaking research papers. Today, we're discussing 'Attention is all you need' by Vaswani at all. Joining us is an expert in machine learning. Welcome.
+    -Thanks for having me. I'm excited to discuss this revolutionary paper.
+    -Let's start with the core idea. What's the main thrust of this research?
+    -The paper introduces a new model architecture called the Transformer, which is based entirely on attention mechanisms. It completely does away with recurrence and convolutions, which were staples in previous sequence transduction models.
+    -That sounds like a significant departure from previous approaches. What motivated this radical change?
+    -The main motivation was to address limitations in previous models, particularly the sequential nature of processing in RNNs. This sequential computation hindered parallelization and made it challenging to learn long-range dependencies in sequences.
+    -Could you explain what attention mechanisms are, and why they're so crucial in this model?
+    -Certainly. Attention allows the model to focus on different parts of the input sequence when producing each part of the output. In the Transformer, they use a specific type called scaled dot product attention and extend it to multi-head attention, which lets the model jointly attend to information from different representation subspaces.
+    -Fascinating. How does the Transformer's architecture differ from previous models?
+    -The Transformer uses a stack of identical layers for both the encoder and decoder. Each layer has two main components, a multi-head self-attention mechanism, and a position-wise fully connected feed-forward network. This structure allows for more parallelization and efficient computation.</doc></docs><api><doc title="API List" desc="A succint list of all functions and methods in claudette."># gaspard Module Documentation
+
+## gaspard.core
+
+- `def find_block(r)`
+    Find the content in `r`.
+
+- `def contents(r)`
+    Helper to get the contents from response `r`.
+
+- `def usage(inp, out)`
+    Slightly more concise version of `Usage`.
+
+- `@patch def __add__(self, b)`
+    Add together each of `input_tokens` and `output_tokens`
+
+- `def mk_msgs(msgs, **kw)`
+    Helper to set 'assistant' role on alternate messages.
+
+- `class Client`
+    - `def __init__(self, model, cli, sp)`
+        Basic LLM messages client.
+
+
+- `@patch @delegates(genai.GenerativeModel.generate_content) def __call__(self, msgs, sp, maxtok, stream, **kwargs)`
+    Make a call to LLM.
+
+- `def mk_toolres(r, ns)`
+    Create a `tool_result` message from response `r`.
+
+- `def json2proto(schema_dict)`
+    Convert JSON schema to protobuf schema
+
+- `@patch @delegates(Client.__call__) def structured(self, msgs, tools, **kwargs)`
+    Return the value of all tool calls (generally used for structured outputs)
+
+- `class Chat`
+    - `def __init__(self, model, cli, sp, tools, tool_config)`
+        Gemini chat client.
+
+    - `@property def use`
+    - `@property def cost`
+
+## gaspard.toolloop
+
+- `@patch @delegates(genai.GenerativeModel.generate_content) def toolloop(self, pr, max_steps, trace_func, cont_func, **kwargs)`
+    Add prompt `pr` to dialog and get a response from the model, automatically following up with `tool_use` messages
+</doc></api><optional><doc title="Tool loop handling" desc="How to use the tool loop functionality for complex multi-step interactions"># Tool loop
+
+
+
+``` python
+import os
+# os.environ['ANTHROPIC_LOG'] = 'debug'
+```
+
+``` python
+model = models[-1]
+```
+
+Anthropic provides an [interesting
+example](https://github.com/anthropics/anthropic-cookbook/blob/main/tool_use/customer_service_agent.ipynb)
+of using tools to mock up a hypothetical ordering system. We’re going to
+take it a step further, and show how we can dramatically simplify the
+process, whilst completing more complex tasks.
+
+We’ll start by defining the same mock customer/order data as in
+Anthropic’s example, plus create a entity relationship between customers
+and orders:
+
+``` python
+orders = {
+    "O1": dict(id="O1", product="Widget A", quantity=2, price=19.99, status="Shipped"),
+    "O2": dict(id="O2", product="Gadget B", quantity=1, price=49.99, status="Processing"),
+    "O3": dict(id="O3", product="Gadget B", quantity=2, price=49.99, status="Shipped")}
+
+customers = {
+    "C1": dict(name="John Doe", email="john@example.com", phone="123-456-7890",
+               orders=[orders['O1'], orders['O2']]),
+    "C2": dict(name="Jane Smith", email="jane@example.com", phone="987-654-3210",
+               orders=[orders['O3']])
+}
+```
+
+We can now define the same functions from the original example – but
+note that we don’t need to manually create the large JSON schema, since
+Claudette handles all that for us automatically from the functions
+directly. We’ll add some extra functionality to update order details
+when cancelling too.
+
+``` python
+def get_customer_info(
+    customer_id:str # ID of the customer
+): # Customer's name, email, phone number, and list of orders
+    "Retrieves a customer's information and their orders based on the customer ID"
+    print(f'- Retrieving customer {customer_id}')
+    return customers.get(customer_id, "Customer not found")
+
+def get_order_details(
+    order_id:str # ID of the order
+): # Order's ID, product name, quantity, price, and order status
+    "Retrieves the details of a specific order based on the order ID"
+    print(f'- Retrieving order {order_id}')
+    return orders.get(order_id, "Order not found")
+
+def cancel_order(
+    order_id:str # ID of the order to cancel
+)->bool: # True if the cancellation is successful
+    "Cancels an order based on the provided order ID"
+    print(f'- Cancelling order {order_id}')
+    if order_id not in orders: return False
+    orders[order_id]['status'] = 'Cancelled'
+    return True
+```
+
+We’re now ready to start our chat.
+
+``` python
+tools = [get_customer_info, get_order_details, cancel_order]
+chat = Chat(model, tools=tools)
+```
+
+We’ll start with the same request as Anthropic showed:
+
+``` python
+r = chat('Can you tell me the email address for customer C1?')
+print(r.stop_reason)
+r.content
+```
+
+    - Retrieving customer C1
+    tool_use
+
+    [ToolUseBlock(id='toolu_0168sUZoEUpjzk5Y8WN3q9XL', input={'customer_id': 'C1'}, name='get_customer_info', type='tool_use')]
+
+Claude asks us to use a tool. Claudette handles that automatically by
+just calling it again:
+
+``` python
+r = chat()
+contents(r)
+```
+
+    'The email address for customer C1 is john@example.com.'
+
+Let’s consider a more complex case than in the original example – what
+happens if a customer wants to cancel all of their orders?
+
+``` python
+chat = Chat(model, tools=tools)
+r = chat('Please cancel all orders for customer C1 for me.')
+print(r.stop_reason)
+r.content
+```
+
+    - Retrieving customer C1
+    tool_use
+
+    [TextBlock(text="Okay, let's cancel all orders for customer C1:", type='text'),
+     ToolUseBlock(id='toolu_01ADr1rEp7NLZ2iKWfLp7vz7', input={'customer_id': 'C1'}, name='get_customer_info', type='tool_use')]
+
+This is the start of a multi-stage tool use process. Doing it manually
+step by step is inconvenient, so let’s write a function to handle this
+for us:
+
+------------------------------------------------------------------------
+
+<a
+href="https://github.com/AnswerDotAI/claudette/blob/main/claudette/toolloop.py#L16"
+target="_blank" style="float:right; font-size:smaller">source</a>
+
+### Chat.toolloop
+
+>  Chat.toolloop (pr, max_steps=10, trace_func:Optional[<built-
+>                     infunctioncallable>]=None, cont_func:Optional[<built-
+>                     infunctioncallable>]=<function noop>, temp=None,
+>                     maxtok=4096, stream=False, prefill='',
+>                     tool_choice:Optional[dict]=None)
+
+*Add prompt `pr` to dialog and get a response from Claude, automatically
+following up with `tool_use` messages*
+
+<table>
+<colgroup>
+<col style="width: 6%" />
+<col style="width: 25%" />
+<col style="width: 34%" />
+<col style="width: 34%" />
+</colgroup>
+<thead>
+<tr>
+<th></th>
+<th><strong>Type</strong></th>
+<th><strong>Default</strong></th>
+<th><strong>Details</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pr</td>
+<td></td>
+<td></td>
+<td>Prompt to pass to Claude</td>
+</tr>
+<tr>
+<td>max_steps</td>
+<td>int</td>
+<td>10</td>
+<td>Maximum number of tool requests to loop through</td>
+</tr>
+<tr>
+<td>trace_func</td>
+<td>Optional</td>
+<td>None</td>
+<td>Function to trace tool use steps (e.g <code>print</code>)</td>
+</tr>
+<tr>
+<td>cont_func</td>
+<td>Optional</td>
+<td>noop</td>
+<td>Function that stops loop if returns False</td>
+</tr>
+<tr>
+<td>temp</td>
+<td>NoneType</td>
+<td>None</td>
+<td>Temperature</td>
+</tr>
+<tr>
+<td>maxtok</td>
+<td>int</td>
+<td>4096</td>
+<td>Maximum tokens</td>
+</tr>
+<tr>
+<td>stream</td>
+<td>bool</td>
+<td>False</td>
+<td>Stream response?</td>
+</tr>
+<tr>
+<td>prefill</td>
+<td>str</td>
+<td></td>
+<td>Optional prefill to pass to Claude as start of its response</td>
+</tr>
+<tr>
+<td>tool_choice</td>
+<td>Optional</td>
+<td>None</td>
+<td>Optionally force use of some tool</td>
+</tr>
+</tbody>
+</table>
+
+<details open class="code-fold">
+<summary>Exported source</summary>
+
+``` python
+@patch
+@delegates(Chat.__call__)
+def toolloop(self:Chat,
+             pr, # Prompt to pass to Claude
+             max_steps=10, # Maximum number of tool requests to loop through
+             trace_func:Optional[callable]=None, # Function to trace tool use steps (e.g `print`)
+             cont_func:Optional[callable]=noop, # Function that stops loop if returns False
+             **kwargs):
+    "Add prompt `pr` to dialog and get a response from Claude, automatically following up with `tool_use` messages"
+    n_msgs = len(self.h)
+    r = self(pr, **kwargs)
+    for i in range(max_steps):
+        if r.stop_reason!='tool_use': break
+        if trace_func: trace_func(self.h[n_msgs:]); n_msgs = len(self.h)
+        r = self(**kwargs)
+        if not (cont_func or noop)(self.h[-2]): break
+    if trace_func: trace_func(self.h[n_msgs:])
+    return r
+```
+
+</details>
+
+We’ll start by re-running our previous request - we shouldn’t have to
+manually pass back the `tool_use` message any more:
+
+``` python
+chat = Chat(model, tools=tools)
+r = chat.toolloop('Can you tell me the email address for customer C1?')
+r
+```
+
+    - Retrieving customer C1
+
+The email address for customer C1 is john@example.com.
+
+<details>
+
+- id: `msg_01Fm2CY76dNeWief4kUW6r71`
+- content:
+  `[{'text': 'The email address for customer C1 is john@example.com.', 'type': 'text'}]`
+- model: `claude-3-haiku-20240307`
+- role: `assistant`
+- stop_reason: `end_turn`
+- stop_sequence: `None`
+- type: `message`
+- usage:
+  `{'input_tokens': 720, 'output_tokens': 19, 'cache_creation_input_tokens': 0, 'cache_read_input_tokens': 0}`
+
+</details>
+
+Let’s see if it can handle the multi-stage process now – we’ll add
+`trace_func=print` to see each stage of the process:
+
+``` python
+chat = Chat(model, tools=tools)
+r = chat.toolloop('Please cancel all orders for customer C1 for me.', trace_func=print)
+r
+```
+
+    - Retrieving customer C1
+    [{'role': 'user', 'content': [{'type': 'text', 'text': 'Please cancel all orders for customer C1 for me.'}]}, {'role': 'assistant', 'content': [TextBlock(text="Okay, let's cancel all orders for customer C1:", type='text'), ToolUseBlock(id='toolu_01SvivKytaRHEdKixEY9dUDz', input={'customer_id': 'C1'}, name='get_customer_info', type='tool_use')]}, {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': 'toolu_01SvivKytaRHEdKixEY9dUDz', 'content': "{'name': 'John Doe', 'email': 'john@example.com', 'phone': '123-456-7890', 'orders': [{'id': 'O1', 'product': 'Widget A', 'quantity': 2, 'price': 19.99, 'status': 'Shipped'}, {'id': 'O2', 'product': 'Gadget B', 'quantity': 1, 'price': 49.99, 'status': 'Processing'}]}"}]}]
+    - Cancelling order O1
+    [{'role': 'assistant', 'content': [TextBlock(text="Based on the customer information, it looks like there are 2 orders for customer C1:\n- Order O1 for Widget A\n- Order O2 for Gadget B\n\nLet's cancel each of these orders:", type='text'), ToolUseBlock(id='toolu_01DoGVUPVBeDYERMePHDzUoT', input={'order_id': 'O1'}, name='cancel_order', type='tool_use')]}, {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': 'toolu_01DoGVUPVBeDYERMePHDzUoT', 'content': 'True'}]}]
+    - Cancelling order O2
+    [{'role': 'assistant', 'content': [ToolUseBlock(id='toolu_01XNwS35yY88Mvx4B3QqDeXX', input={'order_id': 'O2'}, name='cancel_order', type='tool_use')]}, {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': 'toolu_01XNwS35yY88Mvx4B3QqDeXX', 'content': 'True'}]}]
+    [{'role': 'assistant', 'content': [TextBlock(text="I've successfully cancelled both orders O1 and O2 for customer C1. Please let me know if you need anything else!", type='text')]}]
+
+I’ve successfully cancelled both orders O1 and O2 for customer C1.
+Please let me know if you need anything else!
+
+<details>
+
+- id: `msg_01K1QpUZ8nrBVUHYTrH5QjSF`
+- content:
+  `[{'text': "I've successfully cancelled both orders O1 and O2 for customer C1. Please let me know if you need anything else!", 'type': 'text'}]`
+- model: `claude-3-haiku-20240307`
+- role: `assistant`
+- stop_reason: `end_turn`
+- stop_sequence: `None`
+- type: `message`
+- usage:
+  `{'input_tokens': 921, 'output_tokens': 32, 'cache_creation_input_tokens': 0, 'cache_read_input_tokens': 0}`
+
+</details>
+
+OK Claude thinks the orders were cancelled – let’s check one:
+
+``` python
+chat.toolloop('What is the status of order O2?')
+```
+
+    - Retrieving order O2
+
+The status of order O2 is now ‘Cancelled’ since I successfully cancelled
+that order earlier.
+
+<details>
+
+- id: `msg_01XcXpFDwoZ3u1bFDf5mY8x1`
+- content:
+  `[{'text': "The status of order O2 is now 'Cancelled' since I successfully cancelled that order earlier.", 'type': 'text'}]`
+- model: `claude-3-haiku-20240307`
+- role: `assistant`
+- stop_reason: `end_turn`
+- stop_sequence: `None`
+- type: `message`
+- usage:
+  `{'input_tokens': 1092, 'output_tokens': 26, 'cache_creation_input_tokens': 0, 'cache_read_input_tokens': 0}`
+
+</details>
+
+## Code interpreter
+
+Here is an example of using `toolloop` to implement a simple code
+interpreter with additional tools.
+
+``` python
+from toolslm.shell import get_shell
+from fastcore.meta import delegates
+import traceback
+```
+
+``` python
+@delegates()
+class CodeChat(Chat):
+    imps = 'os, warnings, time, json, re, math, collections, itertools, functools, dateutil, datetime, string, types, copy, pprint, enum, numbers, decimal, fractions, random, operator, typing, dataclasses'
+    def __init__(self, model: Optional[str] = None, ask:bool=True, **kwargs):
+        super().__init__(model=model, **kwargs)
+        self.ask = ask
+        self.tools.append(self.run_cell)
+        self.shell = get_shell()
+        self.shell.run_cell('import '+self.imps)
+```
+
+We have one additional parameter to creating a `CodeChat` beyond what we
+pass to [`Chat`](https://claudette.answer.ai/core.html#chat), which is
+`ask` – if that’s `True`, we’ll prompt the user before running code.
+
+``` python
+@patch
+def run_cell(
+    self:CodeChat,
+    code:str,   # Code to execute in persistent IPython session
+): # Result of expression on last line (if exists); '#DECLINED#' if user declines request to execute
+    "Asks user for permission, and if provided, executes python `code` using persistent IPython session."
+    confirm = f'Press Enter to execute, or enter "n" to skip?\n```\n{code}\n```\n'
+    if self.ask and input(confirm): return '#DECLINED#'
+    try: res = self.shell.run_cell(code)
+    except Exception as e: return traceback.format_exc()
+    return res.stdout if res.result is None else res.result
+```
+
+We just pass along requests to run code to the shell’s implementation.
+Claude often prints results instead of just using the last expression,
+so we capture stdout in those cases.
+
+``` python
+sp = f'''You are a knowledgable assistant. Do not use tools unless needed.
+Don't do complex calculations yourself -- use code for them.
+The following modules are pre-imported for `run_cell` automatically:
+
+{CodeChat.imps}
+
+Never mention what tools you are using. Note that `run_cell` interpreter state is *persistent* across calls.
+
+If a tool returns `#DECLINED#` report to the user that the attempt was declined and no further progress can be made.'''
+```
+
+``` python
+def get_user(ignored:str='' # Unused parameter
+            ): # Username of current user
+    "Get the username of the user running this session"
+    print("Looking up username")
+    return 'Jeremy'
+```
+
+In order to test out multi-stage tool use, we create a mock function
+that Claude can call to get the current username.
+
+``` python
+model = models[1]
+```
+
+``` python
+chat = CodeChat(model, tools=[get_user], sp=sp, ask=True, temp=0.3)
+```
+
+Claude gets confused sometimes about how tools work, so we use examples
+to remind it:
+
+``` python
+chat.h = [
+    'Calculate the square root of `10332`', 'math.sqrt(10332)',
+    '#DECLINED#', 'I am sorry but the request to execute that was declined and no further progress can be made.'
+]
+```
+
+Providing a callable to toolloop’s `trace_func` lets us print out
+information during the loop:
+
+``` python
+def _show_cts(h):
+    for r in h:
+        for o in r.get('content'):
+            if hasattr(o,'text'): print(o.text)
+            nm = getattr(o, 'name', None)
+            if nm=='run_cell': print(o.input['code'])
+            elif nm: print(f'{o.name}({o.input})')
+```
+
+…and toolloop’s `cont_func` callable let’s us provide a function which,
+if it returns `False`, stops the loop:
+
+``` python
+def _cont_decline(c):
+    return nested_idx(c, 'content', 'content') != '#DECLINED#'
+```
+
+Now we can try our code interpreter. We start by asking for a function
+to be created, which we’ll use in the next prompt to test that the
+interpreter is persistent.
+
+``` python
+pr = '''Create a 1-line function `checksum` for a string `s`,
+that multiplies together the ascii values of each character in `s` using `reduce`.'''
+chat.toolloop(pr, temp=0.2, trace_func=_show_cts, cont_func=_cont_decline)
+```
+
+    Press Enter to execute, or enter "n" to skip?
+    ```
+    checksum = lambda s: functools.reduce(lambda x, y: x * ord(y), s, 1)
+    ```
+
+    Create a 1-line function `checksum` for a string `s`,
+    that multiplies together the ascii values of each character in `s` using `reduce`.
+    Let me help you create that function using `reduce` and `functools`.
+    checksum = lambda s: functools.reduce(lambda x, y: x * ord(y), s, 1)
+    The function has been created. Let me explain how it works:
+    1. It takes a string `s` as input
+    2. Uses `functools.reduce` to multiply together all ASCII values
+    3. `ord(y)` gets the ASCII value of each character
+    4. The initial value is 1 (the third parameter to reduce)
+    5. The lambda function multiplies the accumulator (x) with each new ASCII value
+
+    You can test it with any string. For example, you could try `checksum("hello")` to see it in action.
+
+The function has been created. Let me explain how it works: 1. It takes
+a string `s` as input 2. Uses `functools.reduce` to multiply together
+all ASCII values 3. `ord(y)` gets the ASCII value of each character 4.
+The initial value is 1 (the third parameter to reduce) 5. The lambda
+function multiplies the accumulator (x) with each new ASCII value
+
+You can test it with any string. For example, you could try
+`checksum("hello")` to see it in action.
+
+<details>
+
+- id: `msg_011pcGY9LbYqvRSfDPgCqUkT`
+- content:
+  `[{'text': 'The function has been created. Let me explain how it works:\n1. It takes a string`s`as input\n2. Uses`functools.reduce`to multiply together all ASCII values\n3.`ord(y)`gets the ASCII value of each character\n4. The initial value is 1 (the third parameter to reduce)\n5. The lambda function multiplies the accumulator (x) with each new ASCII value\n\nYou can test it with any string. For example, you could try`checksum(“hello”)`to see it in action.', 'type': 'text'}]`
+- model: `claude-3-5-sonnet-20241022`
+- role: `assistant`
+- stop_reason: `end_turn`
+- stop_sequence: `None`
+- type: `message`
+- usage:
+  `{'input_tokens': 824, 'output_tokens': 125, 'cache_creation_input_tokens': 0, 'cache_read_input_tokens': 0}`
+
+</details>
+
+By asking for a calculation to be done on the username, we force it to
+use multiple steps:
+
+``` python
+pr = 'Use it to get the checksum of the username of this session.'
+chat.toolloop(pr, trace_func=_show_cts)
+```
+
+    Looking up username
+    Use it to get the checksum of the username of this session.
+    I'll first get the username using `get_user` and then apply our `checksum` function to it.
+    get_user({'ignored': ''})
+    Press Enter to execute, or enter "n" to skip?
+    ```
+    print(checksum("Jeremy"))
+    ```
+
+    Now I'll calculate the checksum of "Jeremy":
+    print(checksum("Jeremy"))
+    The checksum of the username "Jeremy" is 1134987783204. This was calculated by multiplying together the ASCII values of each character in "Jeremy".
+
+The checksum of the username “Jeremy” is 1134987783204. This was
+calculated by multiplying together the ASCII values of each character in
+“Jeremy”.
+
+<details>
+
+- id: `msg_01UXvtcLzzykZpnQUT35v4uD`
+- content:
+  `[{'text': 'The checksum of the username "Jeremy" is 1134987783204. This was calculated by multiplying together the ASCII values of each character in "Jeremy".', 'type': 'text'}]`
+- model: `claude-3-5-sonnet-20241022`
+- role: `assistant`
+- stop_reason: `end_turn`
+- stop_sequence: `None`
+- type: `message`
+- usage:
+  `{'input_tokens': 1143, 'output_tokens': 38, 'cache_creation_input_tokens': 0, 'cache_read_input_tokens': 0}`
+
+</details></doc></optional></project>
