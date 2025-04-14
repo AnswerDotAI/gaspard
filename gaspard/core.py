@@ -119,7 +119,7 @@ def get_stream(r):
 def _set_sp(self:Client, sp:str):
     if sp != self.sp:
         self.sp = sp
-        self.c = genai.GenerativeModel(model, system_instruction=self.sp)
+        self.c = genai.GenerativeModel(self.model, system_instruction=self.sp)
 
 # %% ../00_core.ipynb
 @patch
